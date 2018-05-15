@@ -1,4 +1,4 @@
-package com.chaintope.openassetsj;
+package com.chaintope.openassetsj.utils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,14 +10,21 @@ import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.params.TestNet3Params;
+import org.bitcoinj.script.ScriptOpCodes;
 import org.spongycastle.crypto.digests.RIPEMD160Digest;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import com.google.common.base.Joiner;
 
+/**
+ * Contains all the common utility functions
+ */
 public class Utils {
 
     private static NetworkParameters params = TestNet3Params.get();
+
+    private static final int OA_NAMESPACE = 19;
+    private static final int OA_VERSION_BYTE = 23;
 
     /**
      * Converts OpenAsset address to normal bitcoin address
@@ -51,7 +58,7 @@ public class Utils {
             int addrLen = 1 + 1 + 20;
             byte[] nameAddr = new byte[addrLen];
             System.arraycopy(pubkeyHash, 0, nameAddr, 2, Math.min(pubkeyHash.length, addrLen));
-            nameAddr[0] = 19; // OA namespace
+            nameAddr[0] = OA_NAMESPACE;
             nameAddr[1] = (byte) address.getVersion();
             byte[] checksum = checksum(nameAddr);
             byte[] oaAddr = new byte[addrLen + 4];
@@ -77,22 +84,22 @@ public class Utils {
         byte[] pubKeyHash = address.getHash160();
 
         byte[] script = new byte[5 + pubKeyHash.length];
-        script[0] = (byte) 118;
-        script[1] = (byte) 169;
-        script[2] = (byte) 20;
+        script[0] = (byte) ScriptOpCodes.OP_DUP;
+        script[1] = (byte) ScriptOpCodes.OP_HASH160;
+        script[2] = (byte) 0x14; // 20
         System.arraycopy(pubKeyHash, 0, script, 3, pubKeyHash.length);
-        script[script.length - 2] = (byte) 136;
-        script[script.length - 1] = (byte) 172;
+        script[script.length - 2] = (byte) ScriptOpCodes.OP_EQUALVERIFY;
+        script[script.length - 1] = (byte) ScriptOpCodes.OP_CHECKSIG;
 
         byte[] scriptHash160 = hash160(script);
 
         byte[] scriptWithVersionByte = new byte[scriptHash160.length + 1];
-        scriptWithVersionByte[0] = 23;
+        scriptWithVersionByte[0] = OA_VERSION_BYTE; // 23
         System.arraycopy(scriptHash160, 0, scriptWithVersionByte, 1, scriptHash160.length);
 
         byte[] checksum = checksum(scriptWithVersionByte);
 
-        byte[] assetIdBytes = new byte[scriptWithVersionByte.length + 4];
+        byte[] assetIdBytes = new byte[scriptWithVersionByte.length + 4]; // 4 bytes for checksum
         System.arraycopy(scriptWithVersionByte, 0, assetIdBytes, 0, scriptWithVersionByte.length);
         System.arraycopy(checksum, 0, assetIdBytes, scriptWithVersionByte.length, 4);
 
@@ -169,28 +176,11 @@ public class Utils {
     }
 
     /**
-     * Converts hex string to char string
-     * E.g Converts "FOO" to "464F4F"
-     * @param packedStr
-     * @return Hex string of the packed char string
-     */
-    public static String unpackCharStringToHexString(String packedStr) {
-
-        int loopCount = packedStr.length();
-        String unpackedData = "";
-        for(int i=0; i<loopCount; i++) {
-
-            unpackedData += Integer.toHexString((int) packedStr.charAt(i));
-        }
-        return unpackedData;
-    }
-
-    /**
      * Converts byte array into string
      * @param array byte array
      * @return String equivalent of byte array
      */
-    public static String encodeHexArray(byte array[]) {
+    public static String packByteArrayToString(byte array[]) {
 
         StringBuilder encoded = new StringBuilder();
         for (byte c : array) {
@@ -206,6 +196,23 @@ public class Utils {
             encoded.append(hexByte);
         }
         return encoded.toString();
+    }
+
+    /**
+     * Converts hex string to char string
+     * E.g Converts "FOO" to "464F4F"
+     * @param packedStr
+     * @return Hex string of the packed char string
+     */
+    public static String unpackCharStringToHexString(String packedStr) {
+
+        int loopCount = packedStr.length();
+        String unpackedData = "";
+        for(int i=0; i<loopCount; i++) {
+
+            unpackedData += Integer.toHexString((int) packedStr.charAt(i));
+        }
+        return unpackedData;
     }
 
     /**
@@ -234,10 +241,10 @@ public class Utils {
     }
 
     /**
-     *
+     * Reads data from LEB128 encoded string
      * @param payload
      * @param offset
-     * @return
+     * @return List containing quantity and length
      */
     public static List<Object> readLeb128(String payload, int offset) {
 
@@ -281,7 +288,7 @@ public class Utils {
     /**
      * Decodes the LEB128 encoded string
      * @param encodedString
-     * @return
+     * @return LEB128 decoded number
      */
     public static long decodeLeb128(String encodedString) {
 
@@ -309,9 +316,9 @@ public class Utils {
     }
 
     /**
-     * 
+     * Packs var-int
      * @param value
-     * @return
+     * @return Packed hex string
      */
     public static String packVarInteger(int value) {
     	
@@ -337,10 +344,10 @@ public class Utils {
     }
     
     /**
-     * 
+     * Packs integer based on the flag provided
      * @param value
      * @param flag
-     * @return
+     * @return Packed hex string
      */
     public static String pack(int value, String flag) {
     	String packedStr = "";
@@ -377,9 +384,9 @@ public class Utils {
     }
     
     /**
-     * 
-     * @param str
-     * @return
+     * Converts string from Native-Endian to Little-Endian
+     * @param str Native-Endian string
+     * @return Little-Endian string
      */
     public static String convertToLittleEndian(String str) {
     	
@@ -393,10 +400,10 @@ public class Utils {
     }
     
     /**
-     *
+     * Reads var-int
      * @param data
      * @param offset
-     * @return
+     * @return List containing count and the offset
      */
     public static List<Object> readVarInteger(String data, int offset) {
 
@@ -458,9 +465,9 @@ public class Utils {
     }
 
     /**
-     *
+     * Calculates var-int value
      * @param byteArr
-     * @return
+     * @return Value of the var-int
      */
     public static long calculateVarIntegerValue(byte[] byteArr) {
 
