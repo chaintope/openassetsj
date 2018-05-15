@@ -10,9 +10,12 @@ import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.script.ScriptOpCodes;
 
-import com.chaintope.openassetsj.Utils;
+import com.chaintope.openassetsj.utils.Utils;
 import com.google.common.base.Joiner;
 
+/**
+ * Builds, validates and deserializes the marker output script
+ */
 public class MarkerOutput {
 
     private ArrayList<Long> assetQuantities;
@@ -48,8 +51,8 @@ public class MarkerOutput {
 	}
 
 	/**
-     * Serialize the marker output into a Open Assets Payload buffer.
-     * @return payload string for marker output
+     * Serialize the marker output into a Open Assets payload buffer.
+     * @return Payload string for marker output
      */
     public String toPayload() {
 
@@ -83,9 +86,11 @@ public class MarkerOutput {
     }
 
     /**
-     * Deserializes the input payload
-     * @param payload
-     * @return
+     * Deserializes the input payload,
+	 * and extracts the asset quantities and metadata
+	 * from the given payload 
+     * @param payload Payload string to deserialize
+     * @return MarkerOutput if payload deserializes successfully, null otherwise
      */
     public MarkerOutput deserializePayload(String payload) {
 
@@ -123,9 +128,9 @@ public class MarkerOutput {
     }
 
     /**
-     * 
-     * @param assetQuantityList
-     * @return
+     * Decodes the LEB128 encoded string of asset quantities 
+     * @param assetQuantityList LEB128 encoded string of asset quantities
+     * @return The decoded asset quantity list
      */
     private ArrayList<Long> decodeLeb128(String assetQuantityList) {
 
@@ -154,9 +159,9 @@ public class MarkerOutput {
     }
 
     /**
-     * 
-     * @param payload
-     * @return
+     * Parses asset quantities from the payload
+     * @param payload Payload of marker output
+     * @return A list containing parsed asset quantity and the payload string
      */
     private List<Object> parseAssetQuantity(String payload) {
 
@@ -195,10 +200,8 @@ public class MarkerOutput {
 
     /**
      * Validates the payload data
-     * @param payload payload string of marker output
-     * @return
-     * true: if payload is valid
-     * false: o.w.
+     * @param payload Payload of marker output
+     * @return true if payload is valid, false otherwise
      */
     private boolean validatePayload(String payload) {
 
@@ -251,13 +254,13 @@ public class MarkerOutput {
     }
 
     /**
-     * 
-     * @param outputScript
-     * @return
+     * Parses the marker output script
+     * @param outputScript Marker output script
+     * @return Data if the given script is valid, empty string otherwise
      */
     public String parseScript(byte[] outputScript){
         Script script = new Script(outputScript);
-        String scriptData = Utils.encodeHexArray(script.getChunks().get(1).data);
+        String scriptData = Utils.packByteArrayToString(script.getChunks().get(1).data);
         if (validatePayload(scriptData)) {
         	return scriptData;
         }
@@ -265,8 +268,8 @@ public class MarkerOutput {
     }
 
     /**
-     * 
-     * @return 
+     * Builds the Marker output script from the payload
+     * @return Marker output script
      */
     public Script buildScript(){
 
