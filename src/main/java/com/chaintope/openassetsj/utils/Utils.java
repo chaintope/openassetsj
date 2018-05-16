@@ -9,6 +9,7 @@ import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.ScriptOpCodes;
 import org.spongycastle.crypto.digests.RIPEMD160Digest;
@@ -21,26 +22,14 @@ import com.google.common.base.Joiner;
  */
 public class Utils {
 
+	private static final String network = "testnet";
+
     private static NetworkParameters params = TestNet3Params.get();
 
     private static final int OA_NAMESPACE = 19;
+
     private static final int OA_VERSION_BYTE = 23;
-
-    /**
-     * Converts OpenAsset address to normal bitcoin address
-     * @param oaAddress openassets address
-     * @return bitcoin address
-     */
-    public static Address oaAddressToAddress(String oaAddress) {
-
-        byte[] decodedAddress = Base58.decode(oaAddress);
-        byte[] addressByte = new byte[decodedAddress.length -2];
-        System.arraycopy(decodedAddress, 2, addressByte , 0, addressByte.length);
-        byte[] normalAddress = new byte[20];
-        System.arraycopy(addressByte, 0, normalAddress, 0, addressByte.length -4);
-        Address newAddress = new Address(params, normalAddress);
-        return newAddress;
-    }
+    private static final int OA_VERSION_BYTE_TESTNET = 115;
 
     /**
      * Generates OpenAsset address using EC key
@@ -49,11 +38,22 @@ public class Utils {
      */
     public static String generateOaAddress(ECKey ecKey) {
 
+        Address address = ecKey.decompress().toAddress(params);
+        String oaAddress = addressToOaAddress(address);
+        
+        return oaAddress;
+    }
+
+    /**
+     * Generates OpenAsset address using uncompressed address
+     * @param address Address from which OpenAsset Address should be generated
+     * @return OpenAsset address
+     */
+    public static String addressToOaAddress(Address address) {
+
         String oaAddress = "";
         
         try {
-        	
-            Address address = ecKey.decompress().toAddress(params);
             byte[] pubkeyHash = address.getHash160();
             int addrLen = 1 + 1 + 20;
             byte[] nameAddr = new byte[addrLen];
@@ -72,9 +72,25 @@ public class Utils {
         }
         return oaAddress;
     }
+    
+    /**
+     * Converts OpenAsset address to normal bitcoin address
+     * @param oaAddress openassets address
+     * @return bitcoin address
+     */
+    public static Address oaAddressToAddress(String oaAddress) {
+
+        byte[] decodedAddress = Base58.decode(oaAddress);
+        byte[] addressByte = new byte[decodedAddress.length -2];
+        System.arraycopy(decodedAddress, 2, addressByte , 0, addressByte.length);
+        byte[] normalAddress = new byte[20];
+        System.arraycopy(addressByte, 0, normalAddress, 0, addressByte.length -4);
+        Address newAddress = new Address(params, normalAddress);
+        return newAddress;
+    }
 
     /**
-     * Generates OpenAsset ID
+     * Generates OpenAsset ID from ECKey
      * @param ecKey Key used to derive asset id
      * @return Asset ID
      */
@@ -82,6 +98,28 @@ public class Utils {
 
         Address address = ecKey.decompress().toAddress(params);
         byte[] pubKeyHash = address.getHash160();
+        String assetId = pubKeyHashToAssetID(pubKeyHash);
+        return assetId;
+    }
+
+    /**
+     * Generates OpenAsset ID from Public key hash
+     * @param pubKeyHashStr Public key hash used to derive asset id
+     * @return Asset ID
+     */
+    public static String pubKeyHashToAssetID(String pubKeyHashStr) {
+
+        byte[] pubKeyHash = packHexStringToBytes (pubKeyHashStr);
+        String assetId = pubKeyHashToAssetID(pubKeyHash);
+        return assetId;
+    }
+
+    /**
+     * Generates OpenAsset ID from Public key hash bytes
+     * @param pubKeyHash Public key hash used to derive asset id
+     * @return Asset ID
+     */
+    public static String pubKeyHashToAssetID(byte[] pubKeyHash) {
 
         byte[] script = new byte[5 + pubKeyHash.length];
         script[0] = (byte) ScriptOpCodes.OP_DUP;
@@ -91,10 +129,33 @@ public class Utils {
         script[script.length - 2] = (byte) ScriptOpCodes.OP_EQUALVERIFY;
         script[script.length - 1] = (byte) ScriptOpCodes.OP_CHECKSIG;
 
+        String assetId = scriptToAssetID(script);
+        return assetId;
+    }
+
+    /**
+     * Generates OpenAsset ID from script
+     * @param script Script bytes used to derive asset id
+     * @return Asset ID
+     */
+    public static String scriptToAssetID(String scriptStr) {
+    	
+        byte[] script = packHexStringToBytes (scriptStr);
+        String assetId = scriptToAssetID(script);
+        return assetId;
+    }
+    
+    /**
+     * Generates OpenAsset ID from script bytes
+     * @param script Script bytes used to derive asset id
+     * @return Asset ID
+     */
+    public static String scriptToAssetID(byte[] script) {
+
         byte[] scriptHash160 = hash160(script);
 
         byte[] scriptWithVersionByte = new byte[scriptHash160.length + 1];
-        scriptWithVersionByte[0] = OA_VERSION_BYTE; // 23
+        scriptWithVersionByte[0] = (byte) getVersionByte();
         System.arraycopy(scriptHash160, 0, scriptWithVersionByte, 1, scriptHash160.length);
 
         byte[] checksum = checksum(scriptWithVersionByte);
@@ -104,6 +165,25 @@ public class Utils {
         System.arraycopy(checksum, 0, assetIdBytes, scriptWithVersionByte.length, 4);
 
         return Base58.encode(assetIdBytes);
+    }
+    
+    /**
+     * Gets the version byte according to the current network parameters
+     */
+    private static int getVersionByte() {
+
+    	int version;
+    	switch(network) {
+
+	    	case "testnet":
+	    		version = OA_VERSION_BYTE_TESTNET;
+	    		break;
+	    	case "mainnet":
+	    	default:
+	    		version = OA_VERSION_BYTE;
+	    		break;
+		}    	
+    	return version;
     }
 
     /**
@@ -398,7 +478,17 @@ public class Utils {
     	}
     	return littleEndianStr;
     }
-    
+
+    /**
+     * Reads var-int
+     * @param data
+     * @return List containing count and the offset
+     */
+    public static List<Object> readVarInteger(String data) {
+    	
+    	return readVarInteger(data, 0);
+    }
+
     /**
      * Reads var-int
      * @param data
