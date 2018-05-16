@@ -29,3 +29,9 @@ repositories {
     // You can declare any Maven/Ivy/file repository here.
     jcenter()
 }
+test {
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+    }
+}
