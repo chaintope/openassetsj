@@ -9,6 +9,7 @@ import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.core.VersionedChecksummedBytes;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.ScriptOpCodes;
@@ -16,6 +17,7 @@ import org.spongycastle.crypto.digests.RIPEMD160Digest;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
 import com.google.common.base.Joiner;
+import com.google.common.primitives.Bytes;
 
 /**
  * Contains all the common utility functions
@@ -23,8 +25,9 @@ import com.google.common.base.Joiner;
 public class Utils {
 
 	private static final String network = "testnet";
-
     private static NetworkParameters params = TestNet3Params.get();
+//	private static final String network = "mainnet";
+//    private static NetworkParameters params = MainNetParams.get();
 
     private static final int OA_NAMESPACE = 19;
 
@@ -55,16 +58,11 @@ public class Utils {
         
         try {
             byte[] pubkeyHash = address.getHash160();
-            int addrLen = 1 + 1 + 20;
-            byte[] nameAddr = new byte[addrLen];
-            System.arraycopy(pubkeyHash, 0, nameAddr, 2, Math.min(pubkeyHash.length, addrLen));
-            nameAddr[0] = OA_NAMESPACE;
-            nameAddr[1] = (byte) address.getVersion();
-            byte[] checksum = checksum(nameAddr);
-            byte[] oaAddr = new byte[addrLen + 4];
-            System.arraycopy(nameAddr, 0, oaAddr, 0, nameAddr.length);
-            System.arraycopy(checksum, 0, oaAddr, oaAddr.length - 4, 4);
-            oaAddress = Base58.encode(oaAddr);
+            int addrLen = 1 + 20;
+            byte[] data = new byte[addrLen];
+            System.arraycopy(pubkeyHash, 0, data, 1, 20);
+            data[0] = (byte) address.getVersion();
+            oaAddress = new VersionedChecksummedBytes(OA_NAMESPACE, data) { }.toString();
         }
         catch (Exception e) {
 
@@ -80,11 +78,10 @@ public class Utils {
      */
     public static Address oaAddressToAddress(String oaAddress) {
 
-        byte[] decodedAddress = Base58.decode(oaAddress);
-        byte[] addressByte = new byte[decodedAddress.length -2];
-        System.arraycopy(decodedAddress, 2, addressByte , 0, addressByte.length);
+        byte[] decodedAddress = Base58.decodeChecked(oaAddress);
         byte[] normalAddress = new byte[20];
-        System.arraycopy(addressByte, 0, normalAddress, 0, addressByte.length -4);
+        /* First 2 bytes - OAVersion byte and address version byte - skipped */
+        System.arraycopy(decodedAddress, 2, normalAddress , 0, 20);
         Address newAddress = new Address(params, normalAddress);
         return newAddress;
     }
