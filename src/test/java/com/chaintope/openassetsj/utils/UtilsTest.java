@@ -2,39 +2,15 @@ package com.chaintope.openassetsj.utils;
 
 import static org.junit.Assert.*;
 
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.params.MainNetParams;
+import org.bitcoinj.params.TestNet3Params;
 import org.junit.Test;
 
 public class UtilsTest {
-
-	@Test
-	/**
-	 * Method to test the functionality of pubKeyHashToAssetID()
-	 */	
-	public void pubKeyHashToAssetIDTest() {
-
-		String assetId = Utils.pubKeyHashToAssetID("081522820f2ccef873e47ee62b31cb9e9267e725");
-		assertEquals("oWLkUn44E45cnQtsP6x1wrvJ2iRx9XyFny", assetId);
-	}
-
-	@Test
-	/**
-	 * Method to test the functionality of scriptToAssetID()
-	 */	
-	public void scriptToAssetIDTest() {
-
-		String assetId = Utils.scriptToAssetID("a914f9d499817e88ef7b10a88673296c6d6df2f4292d87");
-		assertEquals("oMb2yzA542yQgwn8XtmGefTzBv5NJ2nDjh", assetId);
-	}
-
-	@Test
-	/**
-	 * Method to test the functionality of encodeLeb128()
-	 */	
-	public void encodeLeb128Test() {
-
-		String encodedStr = Utils.encodeLeb128(300);
-		assertEquals("ac02", encodedStr);
-	}
+	
+	private NetworkParameters params = TestNet3Params.get();
 
 	@Test
 	/**

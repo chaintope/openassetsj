@@ -10,6 +10,7 @@ import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.script.ScriptOpCodes;
 
+import com.chaintope.openassetsj.utils.Leb128;
 import com.chaintope.openassetsj.utils.Utils;
 import com.google.common.base.Joiner;
 
@@ -65,7 +66,7 @@ public class MarkerOutput {
         payloadArray.add(asset_quantity_count);
         for (Long assetId: assetQuantities) {
 
-            payloadArray.add(Utils.encodeLeb128(assetId.intValue()));
+            payloadArray.add(Leb128.encodeLeb128(assetId.intValue()));
         }
 
         String metadata_length = Utils.packVarInteger(metadata.length());
@@ -150,7 +151,7 @@ public class MarkerOutput {
             else {
 
                 assetQuantityBytes += assetQuantityByte;
-                decodedAssetQuantities.add(Utils.decodeLeb128(assetQuantityBytes));
+                decodedAssetQuantities.add(Leb128.decodeLeb128(assetQuantityBytes));
                 assetQuantityBytes = "";
             }
         }
@@ -227,7 +228,7 @@ public class MarkerOutput {
 
         for (int i = 0; i < count; i++) {
 
-            List<Object> leb128Data = Utils.readLeb128(payload, offset);
+            List<Object> leb128Data = Leb128.readLeb128(payload, offset);
             int quantity = Integer.parseInt(leb128Data.get(0).toString());
             int length = Integer.parseInt(leb128Data.get(1).toString());
 
