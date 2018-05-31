@@ -9,8 +9,6 @@ import org.bitcoinj.params.TestNet3Params;
 import org.junit.Test;
 
 public class UtilsTest {
-	
-	private NetworkParameters params = TestNet3Params.get();
 
 	@Test
 	/**

@@ -24,11 +24,6 @@ import com.google.common.primitives.Bytes;
  */
 public class Utils {
 
-//	private static final String network = "testnet";
-//    private static NetworkParameters params = TestNet3Params.get();
-//	private static final String network = "mainnet";
-//    private static NetworkParameters params = MainNetParams.get();
-	
     /**
      * Hash160 of the given input byte array
      * @param bytes Bytes to be hashed
