@@ -223,7 +223,7 @@ public class MarkerOutput {
 
             return res;
         }
-        offset = varInt.getOriginalSizeInBytes();
+        offset += varInt.getOriginalSizeInBytes();
 
         for (int i = 0; i < varInt.value; i++) {
 
@@ -244,7 +244,7 @@ public class MarkerOutput {
         }
         
         VarInt varInt2 = new VarInt(payloadData, offset);
-        offset = varInt2.getOriginalSizeInBytes();
+        offset += varInt2.getOriginalSizeInBytes();
 
         if (payloadData.length < (varInt2.value + offset)) {
             return res;

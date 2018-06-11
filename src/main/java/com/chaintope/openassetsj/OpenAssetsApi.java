@@ -1,11 +1,15 @@
 package com.chaintope.openassetsj;
 
+import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 
+import com.chaintope.openassetsj.helper.OpenAssetsHelper;
+import com.chaintope.openassetsj.model.OaConfig;
 import com.chaintope.openassetsj.model.Rpc;
 
 /**
@@ -14,29 +18,47 @@ import com.chaintope.openassetsj.model.Rpc;
  */
 public class OpenAssetsApi {
 
-	private NetworkParameters params;
-	private WalletAppKit walletAppKit;
-	private Rpc rpc;
+	private OaConfig oaConfig;
+	private OpenAssetsHelper oaHelper;
 
-	public OpenAssetsApi(String network, String rpcUsername, String rpcPassword, int rpcPort, String rpcHost, WalletAppKit walletAppKit) {
+	public OpenAssetsApi(NetworkParameters params, WalletAppKit walletAppKit, long minTransactionFees,
+				Rpc rpc) {
 
-		this.walletAppKit = walletAppKit;
-		rpc = new Rpc(rpcUsername, rpcPassword, rpcPort, rpcHost);
-		setNetworkParameters(network);
+		this.oaConfig = new OaConfig(
+			params,
+			walletAppKit,
+			rpc,
+			minTransactionFees
+		);
+
+		this.oaHelper = new OpenAssetsHelper(oaConfig);
+	}
+
+	public OpenAssetsApi(String network, WalletAppKit walletAppKit, long minTransactionFees,
+				String rpcUsername, String rpcPassword, int rpcPort, String rpcHost) {
+
+		this.oaConfig = new OaConfig(
+			getNetworkParameters(network),
+			walletAppKit,
+			new Rpc(rpcUsername, rpcPassword, rpcPort, rpcHost),
+			minTransactionFees
+		);
+
+		this.oaHelper = new OpenAssetsHelper(oaConfig);
 	}
 
 	/**
 	 * Sets appropriate network parameters according to the network name
 	 */
-	private void setNetworkParameters(String network) {
+	private NetworkParameters getNetworkParameters(String network) {
 		
 		switch(network) {
 			case "mainnet":
-				params = MainNetParams.get();
-				break;
+				return MainNetParams.get();
 			case "testnet":
-				params = TestNet3Params.get();
-				break;
+				return TestNet3Params.get();
+			default:
+				return null;
 //			TODO: Create new exception class for invalid network - InvalidNetworkException
 //			default:
 //				throw new InvalidNetworkException();
@@ -47,9 +69,9 @@ public class OpenAssetsApi {
 	 * Creates a transaction to issue assets
 	 * @return Issuance transaction
 	 */
-	public Transaction issueAssets() {
+	public Transaction issueAssets(ECKey fromKey, Coin amount, String to, int outputQty, String metadata) {
 		// TODO: Create asset issuance transaction
-		return new Transaction(this.params);
+		return oaHelper.issueAssets(fromKey, amount, to, outputQty, metadata);
 	}
 
 	/**
@@ -58,7 +80,7 @@ public class OpenAssetsApi {
 	 */
 	public Transaction transferAssets() {
 		// TODO: Create asset transfer transaction
-		return new Transaction(this.params);
+		return new Transaction(oaConfig.params);
 	}
 
 	/**
@@ -67,7 +89,7 @@ public class OpenAssetsApi {
 	 */
 	public Transaction burnAssets() {
 		// TODO: Create asset transfer transaction
-		return new Transaction(this.params);
+		return new Transaction(oaConfig.params);
 	}
 
 	/**
