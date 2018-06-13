@@ -80,7 +80,7 @@ public class Utils {
      * Converts hex string to char string
      * E.g Converts "464F4F" to "FOO"
      * @param unpackedStr
-     * @return Byte array of the unpacked hex string
+     * @return Char string of the unpacked hex string
      */
     public static String packHexStringToCharString(String unpackedStr) {
 
@@ -226,5 +226,23 @@ public class Utils {
         String hexStr = Integer.toString(value, 16);
         hexStr = (hexStr.length() % 2 == 0) ? hexStr : "0" + hexStr;
         return hexStr;
+    }
+    
+    public static List<Long> splitEqually(long amount, int noOfParts) {
+
+    	List<Long> splittedAmount = new ArrayList<>();
+
+        for (int counter = 0; counter < noOfParts; counter++){
+
+            if(counter == noOfParts - 1) {
+
+            	splittedAmount.add(amount / noOfParts + amount % noOfParts);
+            } else {
+
+            	splittedAmount.add(amount / noOfParts);
+            }
+        }
+    	
+    	return splittedAmount;
     }
 }

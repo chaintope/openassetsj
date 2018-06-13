@@ -3,18 +3,30 @@ package com.chaintope.openassetsj;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+
+import javax.swing.plaf.SliderUI;
 
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.VerificationException;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.wallet.DeterministicSeed;
+import org.bitcoinj.wallet.SendRequest;
 import org.junit.Test;
 
+import com.chaintope.openassetsj.model.OaConfig;
 import com.chaintope.openassetsj.model.Rpc;
+import com.chaintope.openassetsj.utils.Utils;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.subgraph.orchid.encoders.Hex;
 
 public class OpenAssetsApiTest {
 	
@@ -26,19 +38,36 @@ public class OpenAssetsApiTest {
 	 * Method to test the functionality of issueAssets()
 	 */
 	public void issueAssetsTest() {
+
 		setupWallet(null);
 		
 		OpenAssetsApi oaApi = new OpenAssetsApi(params, walletAppKit,
-				10000, new Rpc("username", "password", 18443, "localhost"));
-		Transaction issuingTransaction = oaApi.issueAssets(walletAppKit.wallet().getIssuedReceiveKeys().get(0),
-				Coin.valueOf(25000), "", 1, "");
-		assertTrue(issuingTransaction.getInputs().size() > 0);
-		assertTrue(issuingTransaction.getOutputs().size() > 0);
+				10000, new Rpc("username", "password", 18333, "localhost"));
+
+		Transaction issuanceTransaction = null;
+		
+		List<Long> assetQuantities = new ArrayList<>();
+		assetQuantities.add(8000L);
+		assetQuantities.add(11000L);
+		assetQuantities.add(6000L);
+
+		issuanceTransaction = oaApi.issueAssets(
+				walletAppKit.wallet().getIssuedReceiveKeys().get(0),
+				assetQuantities,
+				"u=https://cpr.sm/5YgSU1Pg-q");
+		
+		try {
+			issuanceTransaction.verify();
+		}
+		catch(VerificationException ex) {
+			ex.printStackTrace();
+			fail("Exception occurred while verifying the issuance transaction");
+		}
 	}
 
     /**
      * method to configure the wallet and its event listeners
-     * @param seed (optional) Deterministic seed object to load wallet from seed
+     * @param seed Deterministic seed object to load wallet from seed
      */
     private void setupWallet(DeterministicSeed seed) {
 
@@ -53,7 +82,6 @@ public class OpenAssetsApiTest {
                 }
 
                 wallet().allowSpendingUnconfirmedTransactions();
-//                setupWalletListeners(wallet());
             }
         };
 
@@ -77,7 +105,7 @@ public class OpenAssetsApiTest {
         });
 
         walletAppKit.setAutoSave(true);
-        walletAppKit.setBlockingStartup(false);
+        walletAppKit.setBlockingStartup(true);
         walletAppKit.startAsync();
         walletAppKit.awaitRunning();
     }

@@ -1,9 +1,12 @@
 package com.chaintope.openassetsj;
 
+import java.util.List;
+
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
@@ -11,6 +14,7 @@ import org.bitcoinj.params.TestNet3Params;
 import com.chaintope.openassetsj.helper.OpenAssetsHelper;
 import com.chaintope.openassetsj.model.OaConfig;
 import com.chaintope.openassetsj.model.Rpc;
+import com.chaintope.openassetsj.model.TransferParameters;
 
 /**
  * Instantiates an OpenAssetsJ API, and provides commonly used OpenAssets operations
@@ -48,7 +52,7 @@ public class OpenAssetsApi {
 	}
 
 	/**
-	 * Sets appropriate network parameters according to the network name
+	 * Returns appropriate network parameters according to the network name
 	 */
 	private NetworkParameters getNetworkParameters(String network) {
 		
@@ -69,9 +73,73 @@ public class OpenAssetsApi {
 	 * Creates a transaction to issue assets
 	 * @return Issuance transaction
 	 */
-	public Transaction issueAssets(ECKey fromKey, Coin amount, String to, int outputQty, String metadata) {
-		// TODO: Create asset issuance transaction
-		return oaHelper.issueAssets(fromKey, amount, to, outputQty, metadata);
+	public Transaction issueAssets(
+			ECKey fromKey,
+			String toAddress,
+			String changeAddress,
+			long transactionAmount,
+			long fees,
+			long totalAssetQuantity,
+			int noOfOutputs,
+			String metadata) {
+
+		noOfOutputs = (noOfOutputs <= 0 ? 1 : noOfOutputs);
+
+		String fromAddress = fromKey.toAddress(oaConfig.params).toBase58();
+		List<TransactionOutput> unspentOutputs = oaHelper.getUnspentOutputs(fromAddress);
+
+		TransferParameters issueParams = new TransferParameters(unspentOutputs,
+				fromKey, toAddress, changeAddress,
+				totalAssetQuantity, noOfOutputs);
+		
+		return oaHelper.issueAssets(issueParams, metadata, fees);
+	}
+
+	/**
+	 * Creates a transaction to issue assets
+	 * @return Issuance transaction
+	 */
+	public Transaction issueAssets(
+			ECKey fromKey,
+			long totalAssetQuantity,
+			int noOfOutputs,
+			String metadata) {
+
+		String fromAddress = fromKey.toAddress(oaConfig.params).toBase58();
+		String toAddress = fromAddress;
+		String changeAddress = fromAddress;
+
+		noOfOutputs = (noOfOutputs <= 0 ? 1 : noOfOutputs);
+		
+		List<TransactionOutput> unspentOutputs = oaHelper.getUnspentOutputs(fromAddress);
+
+		TransferParameters issueParams = new TransferParameters(unspentOutputs,
+				fromKey, toAddress, changeAddress,
+				totalAssetQuantity, noOfOutputs);
+		
+		return oaHelper.issueAssets(issueParams, metadata, oaConfig.minTransactionFees);
+	}
+
+	/**
+	 * Creates a transaction to issue assets
+	 * @return Issuance transaction
+	 */
+	public Transaction issueAssets(
+			ECKey fromKey,
+			List<Long> assetQuantities,
+			String metadata) {
+
+		String fromAddress = fromKey.toAddress(oaConfig.params).toBase58();
+		String toAddress = fromAddress;
+		String changeAddress = fromAddress;
+		
+		List<TransactionOutput> unspentOutputs = oaHelper.getUnspentOutputs(fromAddress);
+
+		TransferParameters issueParams = new TransferParameters(unspentOutputs,
+				fromKey, toAddress, changeAddress,
+				assetQuantities);
+		
+		return oaHelper.issueAssets(issueParams, metadata, oaConfig.minTransactionFees);
 	}
 
 	/**
@@ -88,7 +156,7 @@ public class OpenAssetsApi {
 	 * @return Asset transfer transaction
 	 */
 	public Transaction burnAssets() {
-		// TODO: Create asset transfer transaction
+		// TODO: Create asset burn transaction
 		return new Transaction(oaConfig.params);
 	}
 

@@ -20,7 +20,7 @@ import com.google.common.base.Joiner;
  */
 public class MarkerOutput {
 
-    private ArrayList<Long> assetQuantities;
+    private List<Long> assetQuantities;
     private String metadata;
 
     // A tag indicating that this transaction is an Open Assets transaction
@@ -31,12 +31,12 @@ public class MarkerOutput {
 
     public MarkerOutput() {}
 
-    public MarkerOutput(ArrayList<Long> assetQuantities, String metadata) {
-        this.assetQuantities = assetQuantities;
+    public MarkerOutput(List<Long> assetQuantityList, String metadata) {
+        this.assetQuantities = assetQuantityList;
         this.metadata = metadata;
     }
 
-    public ArrayList<Long> getAssetQuantities() {
+    public List<Long> getAssetQuantities() {
 		return assetQuantities;
 	}
 

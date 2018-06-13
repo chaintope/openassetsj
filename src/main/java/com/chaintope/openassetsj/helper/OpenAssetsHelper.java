@@ -16,6 +16,7 @@ import org.bitcoinj.script.ScriptBuilder;
 
 import com.chaintope.openassetsj.model.ColoredOutput;
 import com.chaintope.openassetsj.model.OaConfig;
+import com.chaintope.openassetsj.model.TransferParameters;
 import com.chaintope.openassetsj.protocol.MarkerOutput;
 
 public class OpenAssetsHelper {
@@ -29,94 +30,62 @@ public class OpenAssetsHelper {
 
     /**
      * Creates OpenAssets issuance transaction
-     * @param fromKey Issuer's key
-     * @param amount btc amount, The amount of asset units to issue
-     * @param to Receiver's bitcoin address, if unspecified, the assets are sent back to the issuer's address
-     * @param outputQty Asset quantity to issue
-     * @return
+     * @param issueParams Parameters required to issue an asset
+     * @param metadata Metadata to be embedded in the issuance transaction
+     * @param fees Fees to be included in transaction
+     * @return Signed issuance transaction
      */
-    public Transaction issueAssets(ECKey fromKey, Coin amount, String to, int outputQty, String metadata){
+    public Transaction issueAssets(TransferParameters issueParams, String metadata, long fees) {
 
-        String from = fromKey.toAddress(oaConfig.params).toString();
-        if (to == null || to.equals("")) {
-            // if unspecified, the assets are sent back to the issuing address.
-            to = from;
-        }
-
-        if(outputQty == 0){
-            outputQty = 1;
-        }
-
-        // Getting all unspent outputs
-        List<TransactionOutput> unspentOutputs = getUnspentOutputs(from);
-        // List<TransactionOutput> coloredOutputs = collectUncoloredOutputs(unspentOutputs, (amount.getValue() + MIN_TRANSACTION_FEES));
-
-        // TransferParameters issueParam = new TransferParameters(coloredOutputs, to, from, amount.value, outputQty);
-
-        Transaction tx = new Transaction(oaConfig.params);
+        Transaction issuanceTransaction = new Transaction(oaConfig.params);
         long totalAmount = 0L;
-        List<TransactionOutput> uncoloredOutputs = collectUncoloredOutputs(unspentOutputs, (amount.getValue() + oaConfig.minTransactionFees));
-
-        //List<ECKey> issuedReceiveKeys = walletAppKit.wallet().getIssuedReceiveKeys();
-        // System.out.println(issuedReceiveKeys);
+        List<TransactionOutput> uncoloredOutputs = collectUncoloredOutputs(issueParams.unspentOutputs,
+        		(issueParams.assetQuantityList.size() * Transaction.MIN_NONDUST_OUTPUT.value + fees));
 
         for (TransactionOutput unspentTx :uncoloredOutputs) {
 
             totalAmount += unspentTx.getValue().getValue();
         }
 
-        Address issueAddress = Address.fromBase58(oaConfig.params, to);
-        Address fromAddress = Address.fromBase58(oaConfig.params, from);
+        for (long assetQuantity :issueParams.assetQuantityList) {
 
-/*
-        ArrayList<Long> asset_quantities = new ArrayList<>();
-        for (long split_amt :issueParam.splitOutputAmount()) {
-
-            asset_quantities.add(split_amt);
-            tx.addOutput(createColoredOutput(issueAddress, split_amt));
+        	issuanceTransaction.addOutput(
+        			createColoredOutput(
+        					Address.fromBase58(oaConfig.params, issueParams.receiversAddress),
+        					Transaction.MIN_NONDUST_OUTPUT.value));
         }
+        
+        issuanceTransaction.addOutput(Coin.ZERO, createMarkerOutput(issueParams.assetQuantityList, metadata));
 
-        ArrayList<Long> asset_quantity_list = issueParam.getAssetQuantities();
-*/
-        ArrayList<Long> asset_quantities = new ArrayList<>();
-        asset_quantities.add((long)outputQty);
-        tx.addOutput(createColoredOutput(issueAddress, amount.value));
+        long changeAmount = totalAmount -
+        		(issueParams.assetQuantityList.size() * Transaction.MIN_NONDUST_OUTPUT.value + fees);
 
-        tx.addOutput(Coin.ZERO, createMarkerOutput(asset_quantities, metadata));
-
-        long changeAmount = totalAmount - amount.value - oaConfig.minTransactionFees;
         if (changeAmount > 0) {
 
-            tx.addOutput(Coin.valueOf(changeAmount), ScriptBuilder.createOutputScript(fromAddress));
+        	issuanceTransaction.addOutput(
+        			Coin.valueOf(changeAmount),
+        			ScriptBuilder.createOutputScript(
+        					issueParams.fromKey.toAddress(oaConfig.params)));
         }
 
         for (TransactionOutput unspentTx :uncoloredOutputs) {
 
-            tx.addSignedInput(unspentTx, fromKey);
+        	issuanceTransaction.addSignedInput(unspentTx, issueParams.fromKey);
         }
 
-        return tx;
+        return issuanceTransaction;
     }
 
     /**
-     * Creates a transaction for sending an asset
-     * @return
-     */
-    private Transaction transferAssets(){
-        Transaction tx = new Transaction(oaConfig.params);
-        return tx;
-    }
-
-    /**
-     * create marker output
-     * @param asset_quantities list of asset quantities to issue
+     * Creates marker output
+     * @param assetQuantityList list of asset quantities to issue
      * @param metadata metadata to pass through marker output
      * @return Script which contains marker output- op_return and data
      */
-    private Script createMarkerOutput(ArrayList<Long> asset_quantities, String metadata){
+    private Script createMarkerOutput(List<Long> assetQuantityList, String metadata){
 
-        MarkerOutput mrkObj = new MarkerOutput(asset_quantities, metadata);
-        return mrkObj.buildScript();
+        MarkerOutput markerOutput = new MarkerOutput(assetQuantityList, metadata);
+        return markerOutput.buildScript();
     }
 
     /**

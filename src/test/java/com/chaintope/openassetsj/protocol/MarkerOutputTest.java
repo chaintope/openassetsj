@@ -98,10 +98,27 @@ public class MarkerOutputTest {
 	@Test
 	public void deserializePayloadTest() {
 		
+		// Single asset quantity
 		markerOutput = new MarkerOutput();
 		markerOutput = markerOutput.deserializePayload("4f41010001904e1b753d68747470733a2f2f6370722e736d2f35596753553150672d71");
 		assertEquals(1, markerOutput.getAssetQuantities().size());
 		assertEquals(10000L, markerOutput.getAssetQuantities().get(0).longValue());
+		assertEquals("u=https://cpr.sm/5YgSU1Pg-q", markerOutput.getMetadata());
+
+		// Equally splitted asset quantity
+		markerOutput = markerOutput.deserializePayload("4f410100038d418d418e411b753d68747470733a2f2f6370722e736d2f35596753553150672d71");
+		assertEquals(3, markerOutput.getAssetQuantities().size());
+		assertEquals(8333L, markerOutput.getAssetQuantities().get(0).longValue());
+		assertEquals(8333L, markerOutput.getAssetQuantities().get(1).longValue());
+		assertEquals(8334L, markerOutput.getAssetQuantities().get(2).longValue());
+		assertEquals("u=https://cpr.sm/5YgSU1Pg-q", markerOutput.getMetadata());
+		
+		// Unequal asset quantity
+		markerOutput = markerOutput.deserializePayload("4f41010003c03ef855f02e1b753d68747470733a2f2f6370722e736d2f35596753553150672d71");
+		assertEquals(3, markerOutput.getAssetQuantities().size());
+		assertEquals(8000L, markerOutput.getAssetQuantities().get(0).longValue());
+		assertEquals(11000L, markerOutput.getAssetQuantities().get(1).longValue());
+		assertEquals(6000L, markerOutput.getAssetQuantities().get(2).longValue());
 		assertEquals("u=https://cpr.sm/5YgSU1Pg-q", markerOutput.getMetadata());
 	}
 
