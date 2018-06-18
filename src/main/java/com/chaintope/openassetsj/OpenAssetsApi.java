@@ -164,10 +164,11 @@ public class OpenAssetsApi {
 	 * Gets assets balance for particular OA address
 	 * @return Assets balance quantity
 	 */
-	public int getAssetsBalance(String oaAddress) {
+	public long getAssetsBalance(String oaAddress) {
 		
 		if (oaAddress == null) {
 			// TODO: Calculate asset balance for all addresses
+			oaHelper.getAssetQuantityBalance();
 		}
 		else {
 			// TODO: Calculate asset balance for particular address
@@ -179,9 +180,9 @@ public class OpenAssetsApi {
 	 * Gets total assets balance
 	 * @return Assets balance quantity
 	 */
-	public int getAssetsBalance() {
+	public long getAssetsBalance() {
 		// TODO: Calculate assets balance for all the address in a wallet
-		return getAssetsBalance(null);
+		return oaHelper.getAssetQuantityBalance();
 	}
 	
 }

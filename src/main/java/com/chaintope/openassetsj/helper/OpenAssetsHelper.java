@@ -5,18 +5,16 @@ import java.util.List;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.ECKey;
-import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
-import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 
 import com.chaintope.openassetsj.model.ColoredOutput;
 import com.chaintope.openassetsj.model.OaConfig;
 import com.chaintope.openassetsj.model.TransferParameters;
+import com.chaintope.openassetsj.model.UnspentOutputs;
 import com.chaintope.openassetsj.protocol.MarkerOutput;
 
 public class OpenAssetsHelper {
@@ -38,9 +36,10 @@ public class OpenAssetsHelper {
     public Transaction issueAssets(TransferParameters issueParams, String metadata, long fees) {
 
         Transaction issuanceTransaction = new Transaction(oaConfig.params);
+        long amountRequired = issueParams.assetQuantityList.size() * Transaction.MIN_NONDUST_OUTPUT.value + fees; 
         long totalAmount = 0L;
-        List<TransactionOutput> uncoloredOutputs = collectUncoloredOutputs(issueParams.unspentOutputs,
-        		(issueParams.assetQuantityList.size() * Transaction.MIN_NONDUST_OUTPUT.value + fees));
+        List<TransactionOutput> uncoloredOutputs = getUncoloredOutputs(issueParams.unspentOutputs,
+        		amountRequired);
 
         for (TransactionOutput unspentTx :uncoloredOutputs) {
 
@@ -140,68 +139,147 @@ public class OpenAssetsHelper {
     }
 
     /**
-     * Filters uncolored outputs from the list of unspent outputs
-     * @param unspentOutputs - List of unspent outputs
-     * @return - List of uncolored TransactionOutput
+     * method to get all uncolored outputs
+     * @return List of all uncolored TransactionOutput
      */
-    private List<TransactionOutput> collectUncoloredOutputs(List<TransactionOutput> unspentOutputs) {
-        return collectUncoloredOutputs(unspentOutputs, -1L);
-    }
+    public List<TransactionOutput> getUncoloredOutputs(List<TransactionOutput> unspentOutputs, long amountRequired) {
 
-    /**
-     * Filters uncolored outputs from the list of unspent outputs
-     * @param unspentOutputs - List of unspent outputs
-     * @param amount - Max transaction amount required, set -1 to remove this limit
-     * @return - List of uncolored TransactionOutput
-     */
-    private List<TransactionOutput> collectUncoloredOutputs(List<TransactionOutput> unspentOutputs, long amount) {
+        List<TransactionOutput> uncoloredOutputs = new ArrayList<>();
+        List<String> transactionsVisited = new ArrayList<>();
+        long amount = 0L;
 
-        List<TransactionOutput> uncoloredOutputs = new ArrayList<TransactionOutput>();
-        long totalAmount = 0L;
-        for (TransactionOutput txOut : unspentOutputs) {
-            Script script = txOut.getScriptPubKey();
-            if (!script.isOpReturn()) {
-                totalAmount += txOut.getValue().getValue();
-                uncoloredOutputs.add(txOut);
-                if ((-1 != amount) && (totalAmount >= amount)) {
-                    break;
-                }
-            }
+        for (TransactionOutput tout : unspentOutputs) {
+        	
+        	Transaction tx = tout.getParentTransaction();
+        	
+        	// to make sure that we don't visit same transaction again for different TxOut
+        	if (!transactionsVisited.contains(tx.getHashAsString())) {
+
+        		transactionsVisited.add(tx.getHashAsString());
+        		UnspentOutputs unspentUncoloredOutputs = getUncoloredOutputs(tx, amountRequired);
+            	uncoloredOutputs.addAll ( unspentUncoloredOutputs.uncoloredOutputs );
+            	amount += unspentUncoloredOutputs.amount;
+        	}
+        	
+        	if (amount >= amountRequired) {
+        		break;
+        	}
         }
+        
+        // return empty list if there is not sufficient balance in the wallet
+        if (amount < amountRequired) {
+//        	TODO: throw exception - InsufficientMoneyException
+//        	throw new InsufficientMoneyException(Coin.valueOf(amountRequired - amount),
+//        			"Wallet has insufficient balance");
+        	uncoloredOutputs = new ArrayList<>();
+        }
+
         return uncoloredOutputs;
     }
 
     /**
-     * Filters colored outputs from the list of unspent outputs
-     * @param unspentOutputs List of unspent outputs
-     * @return List of colored TransactionOutput
+     * Get uncolored outputs in particular transaction
+     * @param transaction
+     * @return List of all the unspent uncolored outputs in that transaction
      */
-    private List<TransactionOutput> collectColoredOutputs(List<TransactionOutput> unspentOutputs) {
+    public UnspentOutputs getUncoloredOutputs(Transaction transaction, long amountRequired) {
 
-        return collectColoredOutputs(unspentOutputs, -1L);
-    }
+        List<TransactionOutput> uncoloredOutputs = new ArrayList<>();
+        long amount = 0L;
 
-    /**
-     * Filters colored outputs from the list of unspent outputs
-     * @param unspentOutputs List of unspent outputs
-     * @param amount Max transaction amount required, set -1 to remove this limit
-     * @return List of colored TransactionOutput
-     */
-    private List<TransactionOutput> collectColoredOutputs(List<TransactionOutput> unspentOutputs, long amount) {
-        List<TransactionOutput> coloredOutputs = new ArrayList<TransactionOutput>();
-        long totalAmount = 0L;
-        for (TransactionOutput txOut : unspentOutputs) {
-            Script script = txOut.getScriptPubKey();
+        // Get all transaction outputs
+        List<TransactionOutput> transactionOutputs = transaction.getOutputs();
+
+        TransactionOutput markerOutputTxOut = null;
+
+        // Check if transaction contains marker output
+        for (TransactionOutput output : transactionOutputs) {
+
+            Script script = output.getScriptPubKey();
+
             if (script.isOpReturn()) {
-                totalAmount += txOut.getValue().getValue();
-                coloredOutputs.add(txOut);
-                if ((-1 != amount) && (totalAmount >= amount)) {
 
-                    break;
+                markerOutputTxOut = output;
+                break;
+            }
+        }
+
+        if ( null != markerOutputTxOut ) {
+
+            // Deserialize marker output, and get the asset quantities
+
+            MarkerOutput markerOutput = new MarkerOutput();
+            String parsedScript = markerOutput.parseScript(markerOutputTxOut.getScriptBytes());
+
+            markerOutput = markerOutput.deserializePayload(parsedScript);
+            List<Long> assetQuantities = markerOutput.getAssetQuantities();
+            int noOfAssetQuantities = assetQuantities.size();
+
+            // Loop through all the transaction outputs, and get uncolored outputs out of it
+
+            int outputIndex = 0;
+            for (TransactionOutput output : transactionOutputs) {
+
+                // Break if all the asset quantities are assigned to outputs
+                if (outputIndex <= noOfAssetQuantities) {
+                	outputIndex++;
+                    continue;
+                }
+
+                // Skip the marker output
+                Script script = output.getScriptPubKey();
+                if (script.isOpReturn()) {
+                    continue;
+                }
+
+                // Check if transaction output is mine
+                if (output.isMine(oaConfig.walletAppKit.wallet())) {
+
+                    // Check if the transaction output is spent
+                    TransactionInput input = output.getSpentBy();
+                    if (input == null) {
+
+                        // Add unspent transaction output to the collection
+                        uncoloredOutputs.add(output);
+                        amount += output.getValue().value;
+                    }
+                }
+                outputIndex++;
+                
+                if (amount >= amountRequired) {
+
+                	break;
                 }
             }
         }
-        return coloredOutputs;
+        else {
+            for (TransactionOutput output : transactionOutputs) {
+
+                // Check if transaction output is mine
+                if (output.isMine(oaConfig.walletAppKit.wallet())) {
+
+                    // Check if the transaction output is spent
+                    TransactionInput input = output.getSpentBy();
+                    if (input == null) {
+
+                        // Add unspent transaction output to the collection
+                        uncoloredOutputs.add(output);
+                        amount += output.getValue().value;
+                    }
+                }
+                
+                if (amount >= amountRequired) {
+
+                	break;
+                }
+            }
+        }
+
+    	UnspentOutputs unspentUncoloredOutputs = new UnspentOutputs();
+    	unspentUncoloredOutputs.uncoloredOutputs = uncoloredOutputs;
+    	unspentUncoloredOutputs.amount = amount;
+    	
+        return unspentUncoloredOutputs;
     }
 
     /**
@@ -250,14 +328,11 @@ public class OpenAssetsHelper {
             // Deserialize marker output, and get the asset quantities
 
             MarkerOutput markerOutput = new MarkerOutput();
-            // String markerOutputScript = Utils.encodeHexArray(markerOutputTxOut.getScriptBytes());
-            // String parsedScript = markerOutput.parseScript(markerOutputScript);
             String parsedScript = markerOutput.parseScript(markerOutputTxOut.getScriptBytes());
 
             markerOutput = markerOutput.deserializePayload(parsedScript);
             List<Long> assetQuantities = markerOutput.getAssetQuantities();
             int noOfAssetQuantities = assetQuantities.size();
-            System.out.println(assetQuantities);
 
             // Loop through all the transaction outputs, and get colored outputs out of it
 
