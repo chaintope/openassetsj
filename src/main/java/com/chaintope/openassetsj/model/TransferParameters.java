@@ -9,7 +9,7 @@ import com.chaintope.openassetsj.utils.Utils;
 
 public class TransferParameters {
 
-    public List<TransactionOutput> unspentOutputs;
+    public UnspentOutputs unspentOutputs;
     public ECKey fromKey;
     public String receiversAddress;
     public String changeAddress;
@@ -29,7 +29,7 @@ public class TransferParameters {
      * @param assetQuantityList
      */
 	public TransferParameters(
-			List<TransactionOutput> unspentOutputs,
+			UnspentOutputs unspentOutputs,
 			ECKey fromKey,
 			String receiversAddress,
 			String changeAddress,
@@ -58,7 +58,7 @@ public class TransferParameters {
 	 * @param noOfOutputs
 	 */
 	public TransferParameters(
-			List<TransactionOutput> unspentOutputs,
+			UnspentOutputs unspentOutputs,
 			ECKey fromKey,
 			String receiversAddress,
 			String changeAddress,

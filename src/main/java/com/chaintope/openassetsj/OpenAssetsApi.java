@@ -15,6 +15,7 @@ import com.chaintope.openassetsj.helper.OpenAssetsHelper;
 import com.chaintope.openassetsj.model.OaConfig;
 import com.chaintope.openassetsj.model.Rpc;
 import com.chaintope.openassetsj.model.TransferParameters;
+import com.chaintope.openassetsj.model.UnspentOutputs;
 
 /**
  * Instantiates an OpenAssetsJ API, and provides commonly used OpenAssets operations
@@ -69,6 +70,10 @@ public class OpenAssetsApi {
 		}
 	}
 	
+	public OaConfig getConfiguration() {
+		return this.oaConfig;
+	}
+	
 	/**
 	 * Creates a transaction to issue assets
 	 * @return Issuance transaction
@@ -85,8 +90,7 @@ public class OpenAssetsApi {
 
 		noOfOutputs = (noOfOutputs <= 0 ? 1 : noOfOutputs);
 
-		String fromAddress = fromKey.toAddress(oaConfig.params).toBase58();
-		List<TransactionOutput> unspentOutputs = oaHelper.getUnspentOutputs(fromAddress);
+		UnspentOutputs unspentOutputs = new UnspentOutputs(oaConfig);
 
 		TransferParameters issueParams = new TransferParameters(unspentOutputs,
 				fromKey, toAddress, changeAddress,
@@ -111,7 +115,7 @@ public class OpenAssetsApi {
 
 		noOfOutputs = (noOfOutputs <= 0 ? 1 : noOfOutputs);
 		
-		List<TransactionOutput> unspentOutputs = oaHelper.getUnspentOutputs(fromAddress);
+		UnspentOutputs unspentOutputs = new UnspentOutputs(oaConfig);
 
 		TransferParameters issueParams = new TransferParameters(unspentOutputs,
 				fromKey, toAddress, changeAddress,
@@ -133,7 +137,7 @@ public class OpenAssetsApi {
 		String toAddress = fromAddress;
 		String changeAddress = fromAddress;
 		
-		List<TransactionOutput> unspentOutputs = oaHelper.getUnspentOutputs(fromAddress);
+		UnspentOutputs unspentOutputs = new UnspentOutputs(oaConfig);
 
 		TransferParameters issueParams = new TransferParameters(unspentOutputs,
 				fromKey, toAddress, changeAddress,
