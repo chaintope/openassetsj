@@ -24,7 +24,7 @@ public class OpenAssetsApiTest {
 	
 	WalletAppKit walletAppKit;
 
-	OpenAssetsApi oaApi;
+  OpenAssetsApi oaApi;
 	OaConfig oaConfig;
 
 	public OpenAssetsApiTest() {

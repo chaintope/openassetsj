@@ -7,6 +7,11 @@ import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.kits.WalletAppKit;
 
+import org.bitcoinj.wallet.DeterministicSeed;
+import org.bitcoinj.wallet.UnreadableWalletException;
+
+import com.google.common.base.Joiner;
+
 /**
  * Class to setup wallet using WalletAppKit
  *
@@ -23,6 +28,9 @@ public class WalletInitializer {
 		this.params = params;
 	}
 
+	/**
+	 * @return Instantiated WalletAppKit object
+	 */
     public WalletAppKit getWalletAppKit() {
 
     	return this.walletAppKit;
@@ -34,11 +42,21 @@ public class WalletInitializer {
      * @return Instance of WalletInitializer class
      */
 	public static WalletInitializer getInstance(NetworkParameters params) {
-		
+
 		if (walletInitializer == null) {
 			
 			walletInitializer = new WalletInitializer(params);
-			setupWallet();
+			
+            DeterministicSeed seed;
+			try {
+
+				seed = new DeterministicSeed(
+						"nuclear scene frog height leg series anger rough loud sleep rookie winner", null, "", 1528695747L);
+				setupWallet(seed);
+			} catch (UnreadableWalletException e) {
+
+				setupWallet(null);
+			}
 		}
 		
 		return walletInitializer;
@@ -48,7 +66,7 @@ public class WalletInitializer {
      * method to configure the wallet and its event listeners
      * @param seed Deterministic seed object to load wallet from seed
      */
-    private static void setupWallet() {
+    private static void setupWallet(DeterministicSeed seed) {
 
         walletAppKit = new WalletAppKit(params, new File("."), "OpenAssetsJKit") {
 
@@ -70,6 +88,7 @@ public class WalletInitializer {
             protected void progress(double pct, int blocksSoFar, Date date) {
 
                 super.progress(pct, blocksSoFar, date);
+                System.out.println(pct);
             }
 
             @Override
@@ -78,6 +97,12 @@ public class WalletInitializer {
                 super.doneDownload();
             }
         });
+        
+        if(seed != null){
+
+            System.out.println("Restoring wallet from seed");
+            walletAppKit.restoreWalletFromSeed(seed);
+        }
 
         walletAppKit.setAutoSave(true);
         walletAppKit.setBlockingStartup(true);
