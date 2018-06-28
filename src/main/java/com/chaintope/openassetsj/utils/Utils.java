@@ -80,7 +80,7 @@ public class Utils {
      * Converts hex string to char string
      * E.g Converts "464F4F" to "FOO"
      * @param unpackedStr
-     * @return Byte array of the unpacked hex string
+     * @return Char string of the unpacked hex string
      */
     public static String packHexStringToCharString(String unpackedStr) {
 
@@ -218,98 +218,6 @@ public class Utils {
     }
 
     /**
-     * Reads var-int
-     * @param data
-     * @return List containing count and the offset
-     */
-    public static List<Object> readVarInteger(String data) {
-    	
-    	return readVarInteger(data, 0);
-    }
-
-    /**
-     * Reads var-int
-     * @param data
-     * @param offset
-     * @return List containing count and the offset
-     */
-    public static List<Object> readVarInteger(String data, int offset) {
-
-        List<Object> objList = new ArrayList<Object>();
-        Object countObj = null;
-        Object offsetObj = 0;
-
-        byte[] packed = packHexStringToBytes(data);
-
-        if (packed.length < (1 + offset)) {
-            countObj = null;
-            offsetObj = 0;
-        }
-        else {
-
-            int elementsToCopy = packed.length - offset;
-            byte[] bytes = new byte[elementsToCopy];
-            System.arraycopy(packed, offset, bytes, 0, (elementsToCopy < 10) ? elementsToCopy : 10);
-
-            int firstByte = (bytes[0] & 0xFF);
-
-            // 0xFD = 253
-            if (firstByte < 253) {
-
-                countObj = firstByte;
-                offsetObj = offset + 1;
-            }
-            // 0xFD = 253
-            else if (firstByte == 253) {
-
-                int noOfBytes = 2;
-                byte[] temp = new byte[noOfBytes];
-                System.arraycopy(bytes, 1, temp, 0, noOfBytes);
-                countObj = calculateVarIntegerValue(temp);
-                offsetObj = offset + noOfBytes + 1;
-            }
-            // 0xFE = 254
-            else if (firstByte == 254) {
-
-                int noOfBytes = 4;
-                byte[] temp = new byte[noOfBytes];
-                System.arraycopy(bytes, 1, temp, 0, noOfBytes);
-                countObj = calculateVarIntegerValue(temp);
-                offsetObj = offset + noOfBytes + 1;
-            }
-            // 0xFF = 255
-            else if (firstByte == 255) {
-
-                int noOfBytes = 8;
-                byte[] temp = new byte[noOfBytes];
-                System.arraycopy(bytes, 1, temp, 0, noOfBytes);
-                countObj = calculateVarIntegerValue(temp);
-                offsetObj = offset + noOfBytes + 1;
-            }
-        }
-        objList.add(countObj);
-        objList.add(offsetObj);
-        return objList;
-    }
-
-    /**
-     * Calculates var-int value
-     * @param byteArr
-     * @return Value of the var-int
-     */
-    public static long calculateVarIntegerValue(byte[] byteArr) {
-
-        long sum = 0L, len = byteArr.length;
-        sum = (byteArr[0] & 0xFF);
-        for (int i = 1; i < len; i++ ) {
-
-            int val = (byteArr[i] & 0xFF);
-            sum += val * Math.pow(256, i);
-        }
-        return sum;
-    }
-
-    /**
      * Converts int to hex value
      * @param value integer value
      * @return converted hex string
@@ -318,5 +226,23 @@ public class Utils {
         String hexStr = Integer.toString(value, 16);
         hexStr = (hexStr.length() % 2 == 0) ? hexStr : "0" + hexStr;
         return hexStr;
+    }
+    
+    public static List<Long> splitEqually(long amount, int noOfParts) {
+
+    	List<Long> splittedAmount = new ArrayList<>();
+
+        for (int counter = 0; counter < noOfParts; counter++){
+
+            if(counter == noOfParts - 1) {
+
+            	splittedAmount.add(amount / noOfParts + amount % noOfParts);
+            } else {
+
+            	splittedAmount.add(amount / noOfParts);
+            }
+        }
+    	
+    	return splittedAmount;
     }
 }

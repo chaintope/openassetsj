@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.bitcoinj.core.VarInt;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.script.ScriptOpCodes;
@@ -19,7 +20,7 @@ import com.google.common.base.Joiner;
  */
 public class MarkerOutput {
 
-    private ArrayList<Long> assetQuantities;
+    private List<Long> assetQuantities;
     private String metadata;
 
     // A tag indicating that this transaction is an Open Assets transaction
@@ -30,12 +31,12 @@ public class MarkerOutput {
 
     public MarkerOutput() {}
 
-    public MarkerOutput(ArrayList<Long> assetQuantities, String metadata) {
-        this.assetQuantities = assetQuantities;
+    public MarkerOutput(List<Long> assetQuantityList, String metadata) {
+        this.assetQuantities = assetQuantityList;
         this.metadata = metadata;
     }
 
-    public ArrayList<Long> getAssetQuantities() {
+    public List<Long> getAssetQuantities() {
 		return assetQuantities;
 	}
 
@@ -217,16 +218,14 @@ public class MarkerOutput {
 
         int offset = (OAP_MARKER + VERSION).length() / 2;
 
-        List<Object> varIntData = Utils.readVarInteger(payload, offset);
-        int count = Integer.parseInt(varIntData.get(0).toString());
-        offset = Integer.parseInt(varIntData.get(1).toString());
-
-        if (count == 0) {
+        VarInt varInt = new VarInt(Utils.packHexStringToBytes(payload), offset);
+        if (varInt.value == 0) {
 
             return res;
         }
+        offset += varInt.getOriginalSizeInBytes();
 
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < varInt.value; i++) {
 
             List<Object> leb128Data = Leb128.readLeb128(payload, offset);
             int quantity = Integer.parseInt(leb128Data.get(0).toString());
@@ -238,16 +237,16 @@ public class MarkerOutput {
             offset = length;
         }
 
-        List<Object> varIntData2 = Utils.readVarInteger(payload, offset);
-
-        if (varIntData2.get(0) == null) {
-            return res;
+        byte[] payloadData = Utils.packHexStringToBytes(payload);
+        
+        if (payloadData.length < (1 + offset)) {
+        	return res;
         }
+        
+        VarInt varInt2 = new VarInt(payloadData, offset);
+        offset += varInt2.getOriginalSizeInBytes();
 
-        int length = Integer.parseInt(varIntData2.get(0).toString());
-        offset = Integer.parseInt(varIntData2.get(1).toString());
-
-        if (Utils.packHexStringToCharString(payload).length() < (length + offset)) {
+        if (payloadData.length < (varInt2.value + offset)) {
             return res;
         }
         res = true;
